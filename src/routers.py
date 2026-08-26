@@ -53,6 +53,7 @@ def _parse_query_date(value: str | None, parameter_name: str) -> date | None:
 @role_router.post("", response_model=schemas.RoleResponse, status_code=201)
 def create_role(request: schemas.RoleCreate, db: Session = Depends(get_db)):
     role_name = request.role_name.strip()
+    
     if not role_name:
         raise HTTPException(status_code=400, detail="Role name cannot be empty")
     if db.query(models.Role).filter(models.Role.role_name == role_name).first() is not None:

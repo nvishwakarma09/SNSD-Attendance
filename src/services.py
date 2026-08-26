@@ -21,6 +21,7 @@ def _insert_statement(model):
         return sqlite_insert(model)
     if engine.dialect.name == "mysql":
         return mysql_insert(model)
+    
     raise RuntimeError(f"Unsupported database dialect: {engine.dialect.name}")
 
 
@@ -98,6 +99,7 @@ class SewadalService:
                 .split()
             )
             response.append(sewadal_data)
+            
         return response
 
     def process_excel_upload(self, file_contents: bytes, unit_id: int) -> int:
