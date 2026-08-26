@@ -1,0 +1,12 @@
+pandas
+openpyxl
+fastapi
+uvicorn[standard]
+pandas
+openpyxl
+python-multipart
+sqlalchemy
+pymysql
+passlib[bcrypt]
+bcrypt<5
+python-jose[cryptography]
