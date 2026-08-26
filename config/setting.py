@@ -13,3 +13,4 @@ class Settings:
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
 settings = Settings()
+

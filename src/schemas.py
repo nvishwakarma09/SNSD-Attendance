@@ -142,4 +142,5 @@ class AttendancePresentSewadal(BaseModel):
 
 class AttendancePresentResponse(BaseModel):
     present_sewadals: list[AttendancePresentSewadal]
-    daily_trend: list[AttendanceDailyInsight]
+    daily_trend: list[AttendanceDailyInsight] 
+
