@@ -4,6 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     DATABASE_URL=sqlite:////app/data/attendance.db
+    DATABASE_RESET_ENABLED=true
 
 WORKDIR /app
 

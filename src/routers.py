@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from datetime import date, datetime, timedelta
 from typing import Literal
+import csv
+import io
 import src.models as models, src.schemas as schemas
-from src.database import get_db
+from src.database import get_db, reset_database
 from src.security import SecurityService, get_current_user, get_user_from_refresh_token, revoke_token
 from config.setting import settings
 from .services import SewadalService, AttendanceService
@@ -15,6 +18,7 @@ attendance_router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 unit_router = APIRouter(prefix="/api/units", tags=["Units"])
 user_router = APIRouter(prefix="/api/users", tags=["Users"])
 role_router = APIRouter(prefix="/api/roles", tags=["Roles"])
+database_router = APIRouter(prefix="/api/database", tags=["Database"])
 
 
 def _parse_query_date(value: str | None, parameter_name: str) -> date | None:
@@ -181,6 +185,26 @@ def get_sewadals_by_unit(
     service = SewadalService(db)
     return service.get_by_unit(unit_id)
 
+@employee_router.delete("/{sd_id}")
+def delete_sewadal(
+    sd_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    SewadalService(db).delete_by_id(sd_id.strip())
+    return {"message": f"Sewadal {sd_id} deleted successfully"}
+
+@database_router.post("/reset")
+def reset_database_endpoint(
+    request: schemas.DatabaseResetRequest,
+    current_user: models.User = Depends(get_current_user),
+):
+    if not settings.DATABASE_RESET_ENABLED:
+        raise HTTPException(status_code=404, detail="Database reset is disabled")
+
+    reset_database()
+    return {"message": "Database reset successfully. All application tables are empty."}
+
 # --- Attendance Routes ---
 @attendance_router.post("/mark")
 def mark_attendance(
@@ -206,6 +230,44 @@ def get_attendance_report(
         raise HTTPException(status_code=400, detail="start_date cannot be after end_date")
     service = AttendanceService(db)
     return service.get_report(limit, start_date, end_date, unit_id, gender, sd_id)
+
+@attendance_router.get("/export", response_class=StreamingResponse)
+def export_attendance_csv(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    fieldnames = [
+        "log_id",
+        "sd_id",
+        "log_date",
+        "check_in",
+        "check_out",
+        "sewadal_name",
+        "gender",
+        "unit_id",
+        "unit_name",
+        "unit_location",
+    ]
+
+    def csv_rows():
+        output = io.StringIO(newline="")
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        yield output.getvalue()
+
+        for row in AttendanceService(db).iter_export_rows():
+            output.seek(0)
+            output.truncate(0)
+            writer.writerow(row)
+            yield output.getvalue()
+
+    return StreamingResponse(
+        csv_rows(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=attendance_export.csv",
+        },
+    )
 
 @attendance_router.get("/insights/kpi", response_model=schemas.AttendanceKPIResponse)
 def get_attendance_insight_kpis(

@@ -53,9 +53,25 @@ def _excel_date(value) -> date | None:
     return parsed_date
 
 
+def _valid_sewadal_records(dataframe: pd.DataFrame) -> list[dict]:
+    sewadal_ids = dataframe["New P#"].astype("string").str.strip()
+    valid_rows = dataframe.loc[sewadal_ids.notna() & sewadal_ids.ne("")].copy()
+    valid_rows["New P#"] = sewadal_ids.loc[valid_rows.index]
+    return valid_rows.to_dict(orient="records")
+
+
 class SewadalService:
     def __init__(self, db: Session):
         self.db = db
+
+    def delete_by_id(self, sd_id: str) -> None:
+        sewadal = self.db.get(models.Sewadal, sd_id)
+        if sewadal is None:
+            raise HTTPException(status_code=404, detail=f"Sewadal {sd_id} not found")
+
+        if sewadal.date_of_delete is None:
+            sewadal.date_of_delete = _india_now().date()
+        self.db.commit()
 
     def get_by_unit(self, unit_id: int):
         sewadals = (
@@ -107,8 +123,8 @@ class SewadalService:
             adhikari_df = adhikari_df[["New P#","Designation"]]
             # df = pd.read_excel(io.BytesIO(file_contents)).where(pd.notnull, None)
             adhikari_records = adhikari_df.to_dict(orient="records")
-            gents_sewadal_records = gents_sewadal_df.to_dict(orient="records")
-            ladies_sewadal_records = ladies_sewadal_df.to_dict(orient="records")
+            gents_sewadal_records = _valid_sewadal_records(gents_sewadal_df)
+            ladies_sewadal_records = _valid_sewadal_records(ladies_sewadal_df)
 
             processed_count = 0
             for row in gents_sewadal_records:
@@ -222,6 +238,29 @@ class SewadalService:
 class AttendanceService:
     def __init__(self, db: Session):
         self.db = db
+
+    def iter_export_rows(self):
+        query = (
+            self.db.query(models.Attendance, models.Sewadal, models.Unit)
+            .outerjoin(models.Sewadal, models.Attendance.sd_id == models.Sewadal.sd_id)
+            .outerjoin(models.Unit, models.Sewadal.unit_id == models.Unit.unit_id)
+            .order_by(models.Attendance.log_id)
+            .yield_per(1000)
+        )
+
+        for attendance, sewadal, unit in query:
+            yield {
+                "log_id": attendance.log_id,
+                "sd_id": attendance.sd_id,
+                "log_date": attendance.log_date.isoformat() if attendance.log_date else "",
+                "check_in": attendance.check_in.isoformat() if attendance.check_in else "",
+                "check_out": attendance.check_out.isoformat() if attendance.check_out else "",
+                "sewadal_name": sewadal.name if sewadal else "",
+                "gender": sewadal.gender if sewadal else "",
+                "unit_id": sewadal.unit_id if sewadal else "",
+                "unit_name": unit.unit_name if unit else "",
+                "unit_location": unit.location if unit else "",
+            }
 
     def mark_attendance(self, qr_token: str):
         sewadal = self.db.query(models.Sewadal).filter(models.Sewadal.qr_token == qr_token).first()

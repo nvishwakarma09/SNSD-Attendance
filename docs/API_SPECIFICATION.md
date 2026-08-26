@@ -461,6 +461,26 @@ Returns all Sewadals assigned to the specified Unit ID, including their full det
 | `401` | Access token is missing, invalid, expired, or is a refresh token |
 | `422` | `unit_id` is missing or not a positive integer |
 
+### 7.3 Delete a Sewadal
+
+```http
+DELETE /api/sewadals/{sd_id}
+Authorization: Bearer <access_token>
+```
+
+Marks the Sewadal as deleted by setting `date_of_delete`. This is intentionally
+a soft delete so related users and attendance history remain available for
+reports and SQLite-to-MySQL data migration. Deleted Sewadals no longer appear
+in the active Sewadal list.
+
+#### Errors
+
+| Status | Condition |
+|---:|---|
+| `401` | Access token is missing, invalid, expired, or is a refresh token |
+| `404` | The supplied `sd_id` does not exist |
+| `422` | `sd_id` is missing |
+
 ---
 
 ## 8. Attendance Endpoints
@@ -713,6 +733,12 @@ SQLite-compatible migration tool or a data-backed schema recreation.
 7. Use `POST /api/auth/refresh` when the access token expires.
 8. Use `POST /api/auth/logout` when the mobile user signs out, then delete both local tokens.
 
+To migrate attendance history between database backends, call
+`GET /api/attendance/export` with an access token. The endpoint downloads
+`attendance_export.csv` containing every attendance row, including rows whose
+employee has since been marked deleted. It includes stable attendance and
+employee IDs, dates, timestamps, gender, and unit details.
+
 ---
 
 ## 12. Configuration
@@ -732,3 +758,24 @@ The application selects the SQLAlchemy dialect from `DATABASE_URL` and supports
 both SQLite and MySQL employee upserts.
 
 For production, set a strong, non-default `SECRET_KEY` and a secure `DATABASE_URL` through environment configuration.
+
+## 13. Database Reset
+
+```http
+POST /api/database/reset
+Authorization: Bearer <access_token>
+Content-Type: application/json
+```
+
+This destructive endpoint drops and recreates all application tables in dependency-safe
+order. It is disabled by default and requires `DATABASE_RESET_ENABLED=true` plus this
+request body:
+
+```json
+{
+  "confirmation": "RESET"
+}
+```
+
+Use it only after exporting required data. The endpoint returns `404` while disabled
+and `401` when the access token is missing or invalid.
