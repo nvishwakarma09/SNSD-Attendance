@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from src.database import engine, Base
-from src.routers import auth_router, employee_router, attendance_router, unit_router, user_router, role_router, database_router
+from src.routers import auth_router, employee_router, attendance_router, unit_router, user_router, role_router
 from config.setting import settings
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,6 @@ app.include_router(attendance_router)
 app.include_router(unit_router)
 app.include_router(user_router)
 app.include_router(role_router)
-app.include_router(database_router)
 
 @app.get("/")
 def root():

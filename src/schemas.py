@@ -1,6 +1,6 @@
 from pydantic import BaseModel, field_validator
 from datetime import date
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 def validate_bcrypt_password(password: str) -> str:
     if len(password.encode("utf-8")) > 72:
@@ -26,9 +26,6 @@ class RefreshTokenRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str
-
-class DatabaseResetRequest(BaseModel):
-    confirmation: Literal["RESET"]
 
 class RoleCreate(BaseModel):
     role_name: str
