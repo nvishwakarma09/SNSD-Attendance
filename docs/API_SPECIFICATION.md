@@ -696,6 +696,9 @@ For an existing database, run the migrations in order:
 3. `migrations/003_rename_date_of_exit_to_doe.sql`
 
 `Base.metadata.create_all()` creates missing tables but does not alter existing column types or constraints.
+The checked-in migration files use MySQL syntax. Fresh SQLite databases are created
+from the SQLAlchemy models automatically; existing SQLite schemas need a
+SQLite-compatible migration tool or a data-backed schema recreation.
 
 ---
 
@@ -718,7 +721,14 @@ The service reads these environment variables:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `DATABASE_URL` | SQLAlchemy database connection | Local MySQL attendance database |
+| `DATABASE_URL` | SQLAlchemy database connection | `sqlite:///./attendance.db` |
 | `SECRET_KEY` | JWT signing key | Development fallback only |
+
+SQLite is the default and requires no database server. To use MySQL, set for example:
+
+`mysql+pymysql://username:password@localhost:3306/attendance_db`
+
+The application selects the SQLAlchemy dialect from `DATABASE_URL` and supports
+both SQLite and MySQL employee upserts.
 
 For production, set a strong, non-default `SECRET_KEY` and a secure `DATABASE_URL` through environment configuration.

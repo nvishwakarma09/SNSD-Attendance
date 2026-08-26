@@ -1,15 +1,43 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from fastapi import HTTPException
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import pandas as pd
 import io
 import logging
 import uuid
 import src.models as models
+from src.database import engine
 from config.constant import ADHIKARI_SHEET_NAME,FEMALE_SEWADAL_SHEET_NAME,MALE_SEWADAL_SHEET_NAME
 
 logger = logging.getLogger(__name__)
+INDIA_TIMEZONE = ZoneInfo("Asia/Kolkata")
+
+
+def _insert_statement(model):
+    if engine.dialect.name == "sqlite":
+        return sqlite_insert(model)
+    if engine.dialect.name == "mysql":
+        return mysql_insert(model)
+    raise RuntimeError(f"Unsupported database dialect: {engine.dialect.name}")
+
+
+def _incoming_value(statement, column_name: str):
+    if engine.dialect.name == "sqlite":
+        return statement.excluded[column_name]
+    return statement.inserted[column_name]
+
+
+def _upsert_statement(statement, **updates):
+    if engine.dialect.name == "sqlite":
+        return statement.on_conflict_do_update(index_elements=["sd_id"], set_=updates)
+    return statement.on_duplicate_key_update(**updates)
+
+
+def _india_now() -> datetime:
+    return datetime.now(INDIA_TIMEZONE).replace(tzinfo=None)
 
 
 def _excel_date(value) -> date | None:
@@ -33,6 +61,7 @@ class SewadalService:
         sewadals = (
             self.db.query(models.Sewadal)
             .filter(models.Sewadal.unit_id == unit_id)
+            .filter(models.Sewadal.date_of_delete.is_(None))
             .order_by(models.Sewadal.sd_id)
             .all()
         )
@@ -83,7 +112,7 @@ class SewadalService:
 
             processed_count = 0
             for row in gents_sewadal_records:
-                stmt = insert(models.Sewadal).values(
+                stmt = _insert_statement(models.Sewadal).values(
                     sd_id=str(row['New P#']).strip(),
                     unit_id=unit_id,
                     qr_token=str(uuid.uuid4()),
@@ -106,31 +135,32 @@ class SewadalService:
                     date_of_delete=_excel_date(row["DO Del"])
 
                 )
-                update_stmt = stmt.on_duplicate_key_update(
-                    unit_id=stmt.inserted.unit_id,
-                    email=stmt.inserted.email,
-                    gender=stmt.inserted.gender,
-                    old_p=stmt.inserted.old_p,
-                    s=stmt.inserted.s,
-                    name=stmt.inserted.name,
-                    fathers_name=stmt.inserted.fathers_name,
-                    date_of_add=stmt.inserted.date_of_add,
-                    date_of_birth=stmt.inserted.date_of_birth,
-                    qualification=stmt.inserted.qualification,
-                    occupation=stmt.inserted.occupation,
-                    address=stmt.inserted.address,
-                    contact_number=stmt.inserted.contact_number,
-                    blood_group=stmt.inserted.blood_group,
-                    date_of_badges=stmt.inserted.date_of_badges,
-                    remarks=stmt.inserted.remarks,
-                    DOE=stmt.inserted.DOE,
-                    date_of_delete=stmt.inserted.date_of_delete
+                update_stmt = _upsert_statement(
+                    stmt,
+                    unit_id=_incoming_value(stmt, "unit_id"),
+                    email=_incoming_value(stmt, "email"),
+                    gender=_incoming_value(stmt, "gender"),
+                    old_p=_incoming_value(stmt, "old_p"),
+                    s=_incoming_value(stmt, "s"),
+                    name=_incoming_value(stmt, "name"),
+                    fathers_name=_incoming_value(stmt, "fathers_name"),
+                    date_of_add=_incoming_value(stmt, "date_of_add"),
+                    date_of_birth=_incoming_value(stmt, "date_of_birth"),
+                    qualification=_incoming_value(stmt, "qualification"),
+                    occupation=_incoming_value(stmt, "occupation"),
+                    address=_incoming_value(stmt, "address"),
+                    contact_number=_incoming_value(stmt, "contact_number"),
+                    blood_group=_incoming_value(stmt, "blood_group"),
+                    date_of_badges=_incoming_value(stmt, "date_of_badges"),
+                    remarks=_incoming_value(stmt, "remarks"),
+                    DOE=_incoming_value(stmt, "DOE"),
+                    date_of_delete=_incoming_value(stmt, "date_of_delete")
                 )
                 self.db.execute(update_stmt)
                 processed_count += 1
 
             for row in ladies_sewadal_records:
-                stmt = insert(models.Sewadal).values(
+                stmt = _insert_statement(models.Sewadal).values(
                     sd_id=str(row['New P#']).strip(),
                     unit_id=unit_id,
                     qr_token=str(uuid.uuid4()),
@@ -153,25 +183,26 @@ class SewadalService:
                     date_of_delete=_excel_date(row["DO Del"])
 
                 )
-                update_stmt = stmt.on_duplicate_key_update(
-                    unit_id=stmt.inserted.unit_id,
-                    email=stmt.inserted.email,
-                    gender=stmt.inserted.gender,
-                    old_p=stmt.inserted.old_p,
-                    s=stmt.inserted.s,
-                    name=stmt.inserted.name,
-                    fathers_name=stmt.inserted.fathers_name,
-                    date_of_add=stmt.inserted.date_of_add,
-                    date_of_birth=stmt.inserted.date_of_birth,
-                    qualification=stmt.inserted.qualification,
-                    occupation=stmt.inserted.occupation,
-                    address=stmt.inserted.address,
-                    contact_number=stmt.inserted.contact_number,
-                    blood_group=stmt.inserted.blood_group,
-                    date_of_badges=stmt.inserted.date_of_badges,
-                    remarks=stmt.inserted.remarks,
-                    DOE=stmt.inserted.DOE,
-                    date_of_delete=stmt.inserted.date_of_delete
+                update_stmt = _upsert_statement(
+                    stmt,
+                    unit_id=_incoming_value(stmt, "unit_id"),
+                    email=_incoming_value(stmt, "email"),
+                    gender=_incoming_value(stmt, "gender"),
+                    old_p=_incoming_value(stmt, "old_p"),
+                    s=_incoming_value(stmt, "s"),
+                    name=_incoming_value(stmt, "name"),
+                    fathers_name=_incoming_value(stmt, "fathers_name"),
+                    date_of_add=_incoming_value(stmt, "date_of_add"),
+                    date_of_birth=_incoming_value(stmt, "date_of_birth"),
+                    qualification=_incoming_value(stmt, "qualification"),
+                    occupation=_incoming_value(stmt, "occupation"),
+                    address=_incoming_value(stmt, "address"),
+                    contact_number=_incoming_value(stmt, "contact_number"),
+                    blood_group=_incoming_value(stmt, "blood_group"),
+                    date_of_badges=_incoming_value(stmt, "date_of_badges"),
+                    remarks=_incoming_value(stmt, "remarks"),
+                    DOE=_incoming_value(stmt, "DOE"),
+                    date_of_delete=_incoming_value(stmt, "date_of_delete")
                 )
                 self.db.execute(update_stmt)
                 processed_count += 1
@@ -197,7 +228,8 @@ class AttendanceService:
         if not sewadal:
             raise HTTPException(status_code=404, detail="Invalid QR Code: Sewadal not found")
 
-        today = datetime.utcnow().date()
+        india_now = _india_now()
+        today = india_now.date()
         existing_log = self.db.query(models.Attendance).filter(
             models.Attendance.sd_id == sewadal.sd_id,
             models.Attendance.log_date == today
@@ -212,7 +244,7 @@ class AttendanceService:
             sd_id=sewadal.sd_id,
             # unit_id=unit_id,
             log_date=today, 
-            check_in=datetime.utcnow()
+            check_in=india_now
         )
         self.db.add(new_attendance)
         self.db.commit()
@@ -231,6 +263,7 @@ class AttendanceService:
             self.db.query(models.Attendance, models.Sewadal, models.Unit)
             .join(models.Sewadal, models.Attendance.sd_id == models.Sewadal.sd_id)
             .join(models.Unit, models.Sewadal.unit_id == models.Unit.unit_id)
+            .filter(models.Sewadal.date_of_delete.is_(None))
         )
 
         if start_date:
@@ -290,6 +323,7 @@ class AttendanceService:
         sd_id: str | None = None,
     ):
         query = self.db.query(models.Sewadal)
+        query = query.filter(models.Sewadal.date_of_delete.is_(None))
         if unit_id is not None:
             query = query.filter(models.Sewadal.unit_id == unit_id)
         if gender:

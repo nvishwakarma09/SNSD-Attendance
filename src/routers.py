@@ -129,8 +129,9 @@ def login(request: schemas.LoginRequest, db: Session = Depends(get_db)):
     refresh_token = SecurityService.create_token(
         {"sub": str(user.user_id)}, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS), "refresh"
     )
-    
-    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "role_id": user.role_id}
+
+    first_name = db.get(models.Sewadal, user.sd_id).name.split()[0] if db.get(models.Sewadal, user.sd_id) else "Unknown"    
+    return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer", "role_id": user.role_id, "unit_id": user.unit_id, "name": first_name}
 
 @auth_router.post("/refresh", response_model=schemas.TokenResponse)
 def refresh_access_token(request: schemas.RefreshTokenRequest, db: Session = Depends(get_db)):
@@ -142,12 +143,15 @@ def refresh_access_token(request: schemas.RefreshTokenRequest, db: Session = Dep
     refresh_token = SecurityService.create_token(
         {"sub": str(user.user_id)}, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS), "refresh"
     )
+    sewadal = db.get(models.Sewadal, user.sd_id)
     db.commit()
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "role_id": user.role_id,
+        "unit_id": user.unit_id,
+        "name": sewadal.name.split()[0] if sewadal else "Unknown",
     }
 
 @auth_router.post("/logout")

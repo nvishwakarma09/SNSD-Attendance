@@ -3,8 +3,8 @@ import os
 class Settings:
     PROJECT_NAME: str = "SNSD Attendance System API"
     DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", 
-        "mysql+pymysql://root:root123@localhost:3306/attendance_db"
+        "DATABASE_URL",
+        "sqlite:///./attendance.db"
     )
     SECRET_KEY: str = os.getenv("SECRET_KEY", "snm.attendance.123")
     ALGORITHM: str = "HS256"

@@ -18,6 +18,8 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     role_id: Optional[int] = None
+    unit_id: Optional[int] = None
+    name: str
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
@@ -99,7 +101,7 @@ class SewadalResponse(BaseModel):
 class AttendanceRecordOut(BaseModel):
     log_id: int
     sd_id: str
-    employee_name: str
+    sewadal_name: str
     gender: Optional[str] = None
     unit_id: int
     unit_name: str
