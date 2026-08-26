@@ -19,7 +19,9 @@ def reset_database() -> None:
 # Dependency for FastAPI routers
 def get_db():
     db = SessionLocal()
+    print("test")
     try:
         yield db
     finally:
-        db.close()
+        db.close() 
+

@@ -59,3 +59,4 @@ class Attendance(Base):
     log_date = Column(Date, nullable=False)
     check_in = Column(DateTime, nullable=False)
     check_out = Column(DateTime, nullable=True)
+    

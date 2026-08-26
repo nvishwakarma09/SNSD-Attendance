@@ -35,4 +35,5 @@ app.include_router(database_router)
 
 @app.get("/")
 def root():
-    return {"message": "Attendance API is running. Visit /docs for Swagger UI."}
+    return {"message": "Attendance API is running. Visit /docs for Swagger UI."} 
+
