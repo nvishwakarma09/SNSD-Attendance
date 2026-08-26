@@ -6,7 +6,7 @@ from typing import Literal
 import csv
 import io
 import src.models as models, src.schemas as schemas
-from src.database import get_db, reset_database
+from src.database import get_db
 from src.security import SecurityService, get_current_user, get_user_from_refresh_token, revoke_token
 from config.setting import settings
 from .services import SewadalService, AttendanceService
@@ -18,7 +18,6 @@ attendance_router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 unit_router = APIRouter(prefix="/api/units", tags=["Units"])
 user_router = APIRouter(prefix="/api/users", tags=["Users"])
 role_router = APIRouter(prefix="/api/roles", tags=["Roles"])
-database_router = APIRouter(prefix="/api/database", tags=["Database"])
 
 
 def _parse_query_date(value: str | None, parameter_name: str) -> date | None:
@@ -194,17 +193,6 @@ def delete_sewadal(
 ):
     SewadalService(db).delete_by_id(sd_id.strip())
     return {"message": f"Sewadal {sd_id} deleted successfully"}
-
-@database_router.post("/reset")
-def reset_database_endpoint(
-    request: schemas.DatabaseResetRequest,
-    current_user: models.User = Depends(get_current_user),
-):
-    if not settings.DATABASE_RESET_ENABLED:
-        raise HTTPException(status_code=404, detail="Database reset is disabled")
-
-    reset_database()
-    return {"message": "Database reset successfully. All application tables are empty."}
 
 # --- Attendance Routes ---
 @attendance_router.post("/mark")

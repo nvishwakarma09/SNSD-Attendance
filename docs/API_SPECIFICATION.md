@@ -759,23 +759,3 @@ both SQLite and MySQL employee upserts.
 
 For production, set a strong, non-default `SECRET_KEY` and a secure `DATABASE_URL` through environment configuration.
 
-## 13. Database Reset
-
-```http
-POST /api/database/reset
-Authorization: Bearer <access_token>
-Content-Type: application/json
-```
-
-This destructive endpoint drops and recreates all application tables in dependency-safe
-order. It is disabled by default and requires `DATABASE_RESET_ENABLED=true` plus this
-request body:
-
-```json
-{
-  "confirmation": "RESET"
-}
-```
-
-Use it only after exporting required data. The endpoint returns `404` while disabled
-and `401` when the access token is missing or invalid.
